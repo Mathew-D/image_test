@@ -26,6 +26,17 @@ To use this:
     image_obj.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
     
     // The unwrap() is safe because we know the texture was preloaded
+    
+    // You can also access textures by index:
+    image_obj.set_preload(texture_manager.get_preload_by_index(0).unwrap());
+    
+    // Get the number of preloaded textures:
+    let count = texture_manager.texture_count();
+    
+    // For implementing features like image slideshows, you can increment an index
+    // and wrap around to cycle through all images:
+    current_index = (current_index + 1) % texture_manager.texture_count();
+    image_obj.set_preload(texture_manager.get_preload_by_index(current_index).unwrap());
 
 Note: For clearing images, use the clear() method directly on the ImageObject:
     image_obj.clear();
@@ -38,6 +49,7 @@ use crate::objects::images_obj::set_texture_main;
 /// This reduces memory usage and prevents flickering when switching images
 pub struct TextureManager {
     textures: HashMap<String, (Texture2D, Vec<u8>)>,
+    load_order: Vec<String>, // Store just the order textures were loaded in
 }
 
 impl TextureManager {
@@ -45,6 +57,7 @@ impl TextureManager {
     pub fn new() -> Self {
         Self {
             textures: HashMap::new(),
+            load_order: Vec::new(),
         }
     }
     
@@ -53,10 +66,12 @@ impl TextureManager {
         if !self.textures.contains_key(path) {
             let (texture, mask) = set_texture_main(path).await;
             self.textures.insert(path.to_string(), (texture, mask));
+            self.load_order.push(path.to_string()); // Store just the load order
         }
     }
     
     /// Preload multiple textures at once
+    #[allow(unused)]
     pub async fn preload_all(&mut self, paths: &[&str]) {
         for path in paths {
             self.preload(path).await;
@@ -64,9 +79,33 @@ impl TextureManager {
     }
     
     /// Get a preloaded texture for use in an ImageObject
+    #[allow(unused)]
     pub fn get_preload(&self, path: &str) -> Option<(Texture2D, Vec<u8>, String)> {
         self.textures.get(path).map(|(texture, mask)| 
             (texture.clone(), mask.clone(), path.to_string())
         )
+    }
+    
+    /// Get a preloaded texture by its index in the preload order
+    #[allow(unused)]
+    pub fn get_preload_by_index(&self, index: usize) -> Option<(Texture2D, Vec<u8>, String)> {
+        if index < self.load_order.len() {
+            let path = &self.load_order[index];
+            self.get_preload(path)
+        } else {
+            None
+        }
+    }
+    
+    /// Get the number of preloaded textures
+    #[allow(unused)]
+    pub fn texture_count(&self) -> usize {
+        self.load_order.len()
+    }
+    
+    /// Get a list of all preloaded texture paths in load order
+    #[allow(unused)]
+    pub fn get_texture_paths(&self) -> &[String] {
+        &self.load_order
     }
 }
