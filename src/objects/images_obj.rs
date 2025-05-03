@@ -1,26 +1,28 @@
 /*
 Made by: Mathew Dusome
 April 26 2025
+Program Details: Image object for displaying and manipulating images
+
 To import you need:
-Adds a image object 
 In the mod objects section add:
     pub mod images_obj;
     
 Then add the following with the use commands:
 use objects::images_obj::ImageObject;
 
-Then to use this you would put the following above the loop: 
+Usage examples:
+1. Create a new image object:
     let img = ImageObject::new(
         "assets/image_name.png",
-        100.0,
-        200.0,
-        200.0,
-        60.0,
-        true,  // Enable stretching
-        1.0,   // Normal zoom (100%)
+        100.0,  // width
+        200.0,  // height
+        200.0,  // x position
+        60.0,   // y position
+        true,   // Enable stretching
+        1.0,    // Normal zoom (100%)
     ).await;
 
-    // Or with custom stretch and zoom options:
+2. With custom stretch and zoom options:
     let img_custom = ImageObject::new(
         "assets/image_name.png",
         100.0,
@@ -31,8 +33,24 @@ Then to use this you would put the following above the loop:
         1.5,    // Set zoom to 150%
     ).await;
 
-Then in side the loop you would use:
-img.draw();
+3. Using with TextureManager:
+    // Since all textures are preloaded, you can directly pass the result of get_preload()
+    // to set_preload() without intermediate variables:
+    image_obj.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
+    
+    // The unwrap() is safe because we know the texture was preloaded
+
+4. Clear an image (set to transparent):
+    image_obj.clear();
+    
+5. Draw the image in your game loop:
+    img.draw();
+
+Additional functionality:
+- Zoom controls: set_zoom(), zoom_in(), zoom_out(), reset_zoom()
+- Stretch controls: enable_stretch(), disable_stretch(), toggle_stretch()
+- Position control: set_position()
+- Check if empty: is_empty()
 */
 use macroquad::prelude::*;
 use macroquad::texture::Texture2D;
@@ -207,22 +225,27 @@ impl ImageObject {
     pub fn is_collidable(&self) -> bool {
         !self.is_empty()
     }
-
-    // Set a pre-loaded texture directly (from TextureManager)
-    #[allow(unused)]
-    pub fn set_preloaded_texture(&mut self, texture: Texture2D, mask: Vec<u8>) {
-        self.texture = texture;
-        self.transparency_mask = mask;
-        // Note: We don't update filename here because we don't know the path
-        // If needed, add a separate method that takes both texture and filename
-    }
     
-    // Set a pre-loaded texture with filename
+    // Public method for setting a preloaded texture that accepts the tuple directly
     #[allow(unused)]
-    pub fn set_preloaded_texture_with_filename(&mut self, texture: Texture2D, mask: Vec<u8>, filename: &str) {
+    pub fn set_preload(&mut self, preloaded: (Texture2D, Vec<u8>, String)) {
+        let (texture, mask, filename) = preloaded;
         self.texture = texture;
         self.transparency_mask = mask;
-        self.filename = filename.to_string();
+        self.filename = filename;
+    }
+
+    /// Clears the image by setting it to a 1x1 transparent pixel
+    #[allow(unused)]
+    pub fn clear(&mut self) {
+        // Create a 1x1 transparent pixel texture
+        let empty_texture = Texture2D::from_rgba8(1, 1, &[0, 0, 0, 0]);
+        let empty_mask = vec![0]; // Single transparent pixel
+        
+        // Update the image object with this empty texture
+        self.texture = empty_texture;
+        self.transparency_mask = empty_mask;
+        self.filename = "__empty__".to_string();
     }
 }
 
