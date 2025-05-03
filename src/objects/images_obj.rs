@@ -36,7 +36,6 @@ img.draw();
 */
 use macroquad::prelude::*;
 use macroquad::texture::Texture2D;
-use std::collections::HashMap;
 
 pub struct ImageObject {
     texture: Texture2D,
@@ -47,8 +46,7 @@ pub struct ImageObject {
     transparency_mask: Vec<u8>, // Now storing raw transparency data (bitmask)
     stretch_enabled: bool, // Flag to control image stretching
     zoom_level: f32, // Zoom factor to scale the image
-    // Add preloaded textures storage
-    preloaded_textures: HashMap<String, (Texture2D, Vec<u8>)>,
+    filename: String, // Store the original filename/path
 }
 
 impl ImageObject {
@@ -72,7 +70,7 @@ impl ImageObject {
             transparency_mask,
             stretch_enabled,
             zoom_level: zoom_level.max(0.1), // Ensure minimum zoom
-            preloaded_textures: HashMap::new(),
+            filename: asset_path.to_string(), // Store the original filename
         }
     }
 
@@ -121,6 +119,12 @@ impl ImageObject {
         self.y = pos[1];
     }
 
+    // Get the original filename/path of the loaded image
+    #[allow(unused)]
+    pub fn get_filename(&self) -> &str {
+        &self.filename
+    }
+
     // Get the transparency mask (bitmask)
     #[allow(unused)]
     pub fn get_mask(&self) -> Vec<u8> {
@@ -131,6 +135,7 @@ impl ImageObject {
         let (texture, transparency_mask) = set_texture_main(texture_path).await;
         self.texture = texture;
         self.transparency_mask = transparency_mask;
+        self.filename = texture_path.to_string(); // Update the filename when texture changes
     }
     
     // Methods to toggle stretching
@@ -190,56 +195,6 @@ impl ImageObject {
     pub fn reset_zoom(&mut self) {
         self.zoom_level = 1.0;
     }
-
-    // New method to preload textures outside the main loop
-    #[allow(unused)]
-    pub async fn preload_textures(&mut self, texture_paths: &[&str]) {
-        // Initialize the HashMap if needed
-        if self.preloaded_textures.is_empty() {
-            self.preloaded_textures = HashMap::new();
-        }
-        
-        // Preload all specified textures
-        for &path in texture_paths {
-            if !self.preloaded_textures.contains_key(path) {
-                let (texture, mask) = set_texture_main(path).await;
-                self.preloaded_textures.insert(path.to_string(), (texture, mask));
-            }
-        }
-    }
-    
-    // New method to switch to a preloaded texture instantly (no flickering)
-    #[allow(unused)]
-    pub fn switch_texture(&mut self, texture_path: &str) -> bool {
-        if let Some((texture, mask)) = self.preloaded_textures.get(texture_path) {
-            // Clone the texture and mask
-            self.texture = texture.clone();
-            self.transparency_mask = mask.clone();
-            true
-        } else {
-            false
-        }
-    }
-    
-    // New method to clear the image (show nothing) without flickering
-    #[allow(unused)]
-    pub fn clear_image(&mut self) {
-        // Create a 1x1 transparent pixel texture if none exists in the preloaded cache
-        if !self.preloaded_textures.contains_key("__empty__") {
-            // Create an empty 1x1 transparent texture
-            let empty_texture = Texture2D::from_rgba8(1, 1, &[0, 0, 0, 0]);
-            let empty_mask = vec![0]; // Single transparent pixel
-            
-            // Add it to the preloaded textures
-            self.preloaded_textures.insert("__empty__".to_string(), (empty_texture, empty_mask));
-        }
-        
-        // Switch to the empty texture
-        if let Some((texture, mask)) = self.preloaded_textures.get("__empty__") {
-            self.texture = texture.clone();
-            self.transparency_mask = mask.clone();
-        }
-    }
     
     // Check if the image is currently cleared/empty
     #[allow(unused)]
@@ -253,45 +208,21 @@ impl ImageObject {
         !self.is_empty()
     }
 
-    // Method to switch to a preloaded texture by filename
+    // Set a pre-loaded texture directly (from TextureManager)
     #[allow(unused)]
-    pub fn switch_texture_by_name(&mut self, texture_path: &str) -> bool {
-        if let Some((texture, mask)) = self.preloaded_textures.get(texture_path) {
-            // Clone the texture and mask
-            self.texture = texture.clone();
-            self.transparency_mask = mask.clone();
-            true
-        } else {
-            false
-        }
+    pub fn set_preloaded_texture(&mut self, texture: Texture2D, mask: Vec<u8>) {
+        self.texture = texture;
+        self.transparency_mask = mask;
+        // Note: We don't update filename here because we don't know the path
+        // If needed, add a separate method that takes both texture and filename
     }
     
-    // Get the list of preloaded texture names
+    // Set a pre-loaded texture with filename
     #[allow(unused)]
-    pub fn get_preloaded_texture_names(&self) -> Vec<String> {
-        self.preloaded_textures.keys().cloned().collect()
-    }
-    
-    // Check if a specific texture is preloaded
-    #[allow(unused)]
-    pub fn is_texture_preloaded(&self, texture_path: &str) -> bool {
-        self.preloaded_textures.contains_key(texture_path)
-    }
-    
-    // Get the current texture path (if it can be determined)
-    #[allow(unused)]
-    pub fn get_current_texture_path(&self) -> Option<String> {
-        // Compare the current texture with preloaded textures to find a match
-        for (path, (texture, _)) in &self.preloaded_textures {
-            // Check if width, height and a few pixel values match as a heuristic
-            if texture.width() == self.texture.width() && 
-               texture.height() == self.texture.height() {
-                // This is a simplification - in a real implementation you might
-                // want to store the current path as a field when switching
-                return Some(path.clone());
-            }
-        }
-        None
+    pub fn set_preloaded_texture_with_filename(&mut self, texture: Texture2D, mask: Vec<u8>, filename: &str) {
+        self.texture = texture;
+        self.transparency_mask = mask;
+        self.filename = filename.to_string();
     }
 }
 
