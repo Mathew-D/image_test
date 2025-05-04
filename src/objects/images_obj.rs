@@ -22,7 +22,22 @@ Usage examples:
         1.0,    // Normal zoom (100%)
     ).await;
 
-2. With custom stretch and zoom options:
+2. Create an empty image to load later:
+    // Pass an empty string "" instead of a file path to create a cleared/empty image
+    let img = ImageObject::new(
+        "",     // Empty string creates a transparent image
+        100.0,  // width
+        200.0,  // height
+        200.0,  // x position
+        60.0,   // y position
+        true,   // Enable stretching
+        1.0,    // Normal zoom (100%)
+    ).await;
+    
+    // Then later, you can set a texture:
+    img.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
+
+3. With custom stretch and zoom options:
     let img_custom = ImageObject::new(
         "assets/image_name.png",
         100.0,
@@ -33,17 +48,17 @@ Usage examples:
         1.5,    // Set zoom to 150%
     ).await;
 
-3. Using with TextureManager:
+4. Using with TextureManager:
     // Since all textures are preloaded, you can directly pass the result of get_preload()
     // to set_preload() without intermediate variables:
     image_obj.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
     
     // The unwrap() is safe because we know the texture was preloaded
 
-4. Clear an image (set to transparent):
+5. Clear an image (set to transparent):
     image_obj.clear();
     
-5. Draw the image in your game loop:
+6. Draw the image in your game loop:
     img.draw();
 
 Additional functionality:
@@ -78,6 +93,26 @@ impl ImageObject {
         stretch_enabled: bool,
         zoom_level: f32
     ) -> Self {
+        // Check if the asset path is empty
+        if asset_path.is_empty() {
+            // Create an empty/clear image
+            let empty_texture = Texture2D::from_rgba8(1, 1, &[0, 0, 0, 0]);
+            let empty_mask = vec![0]; // Single transparent pixel
+            
+            return Self { 
+                x, 
+                y, 
+                width, 
+                height, 
+                texture: empty_texture, 
+                transparency_mask: empty_mask,
+                stretch_enabled,
+                zoom_level: zoom_level.max(0.1), // Ensure minimum zoom
+                filename: "__empty__".to_string(), // Use a special filename
+            };
+        }
+        
+        // Normal path for valid asset paths
         let (texture, transparency_mask) = set_texture_main(asset_path).await;
         Self { 
             x, 

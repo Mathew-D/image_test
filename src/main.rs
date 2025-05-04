@@ -29,7 +29,7 @@ async fn main() {
 
     // Create a single image object
     let mut image_obj = ImageObject::new(
-        "assets/image1.png", 
+        "", 
         300.0, 
         200.0, 
         screen_width() / 2.0 - 150.0, 
@@ -117,25 +117,43 @@ async fn main() {
 
         // Handle image1 button
         if image1_button.click() {
-            // Load image1 directly by passing the tuple
-            image_obj.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
-            current_image_index = 0; // Update the current index
+            // Using the safer pattern matching approach
+            if let Some(preloaded) = texture_manager.get_preload("assets/image1.png") {
+                image_obj.set_preload(preloaded);
+                current_image_index = 0; // Update the current index
+            } else {
+                // Handle the case where the image doesn't exist
+                println!("Warning: Image assets/image1.png not found in texture manager");
+                // Optionally, you could try to load it dynamically
+                // texture_manager.preload("assets/image1.png").await;
+            }
         }
 
         // Handle image2 button
         if image2_button.click() {
-            // Load image2 directly by passing the tuple
+            // Direct unwrap approach - simpler but will panic if image is missing
+            // This approach assumes the image was preloaded and is definitely available
             image_obj.set_preload(texture_manager.get_preload("assets/image2.png").unwrap());
             current_image_index = 1; // Update the current index
         }
 
         // Handle next image button (cycling through available images)
         if next_button.click() {
-            // Increment index and wrap around when reaching the end
-            current_image_index = (current_image_index + 1) % texture_manager.texture_count();
-            
-            // Load the image at the current index
-            image_obj.set_preload(texture_manager.get_preload_by_index(current_image_index).unwrap());
+            // Only proceed if there are textures available
+            if texture_manager.texture_count() > 0 {
+                // Increment index and wrap around when reaching the end
+                current_image_index = (current_image_index + 1) % texture_manager.texture_count();
+                
+                // Load the image at the current index
+                if let Some(preloaded) = texture_manager.get_preload_by_index(current_image_index) {
+                    image_obj.set_preload(preloaded);
+                } else {
+                    // This should rarely happen since we check texture_count() > 0
+                    println!("Warning: Could not find image at index {}", current_image_index);
+                }
+            } else {
+                println!("No images available to cycle through");
+            }
         }
 
         // Handle clear button

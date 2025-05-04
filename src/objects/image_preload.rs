@@ -1,5 +1,5 @@
 /*
-Made by: Your Name Here
+Made by:Mathew Dusome
 Date: 2025-05-03
 Program Details: Central texture manager for preloading and sharing textures
 
@@ -20,23 +20,45 @@ To use this:
     // Or preload individual textures
     texture_manager.preload("assets/image3.png").await;
     
-5. Get preloaded textures for use with ImageObject:
-    // Since all textures are preloaded, you can directly pass the result of get_preload() 
-    // to set_preload() without intermediate variables:
-    image_obj.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
+5. Get preloaded textures for use with ImageObject - two approaches:
+
+   // Approach 1: Using unwrap() - Simple but will panic if image doesn't exist
+   // Only use this when you're certain the texture was preloaded
+   image_obj.set_preload(texture_manager.get_preload("assets/image1.png").unwrap());
+   
+   // Approach 2: Using if let Some() - Safer, handles missing textures gracefully
+   if let Some(preloaded) = texture_manager.get_preload("assets/image2.png") {
+       image_obj.set_preload(preloaded);
+   } else {
+       println!("Warning: Image not found in texture manager");
+       // Handle the error case (e.g., try to load it or use a placeholder)
+   }
     
-    // The unwrap() is safe because we know the texture was preloaded
-    
-    // You can also access textures by index:
+6. Access textures by index:
+    // Using unwrap() approach:
     image_obj.set_preload(texture_manager.get_preload_by_index(0).unwrap());
     
-    // Get the number of preloaded textures:
+    // Using if let Some() approach:
+    if let Some(preloaded) = texture_manager.get_preload_by_index(1) {
+        image_obj.set_preload(preloaded);
+    }
+    
+7. Getting the number of preloaded textures:
     let count = texture_manager.texture_count();
     
-    // For implementing features like image slideshows, you can increment an index
-    // and wrap around to cycle through all images:
+8. For implementing features like image slideshows, you can increment an index
+   and wrap around to cycle through all images:
     current_index = (current_index + 1) % texture_manager.texture_count();
+    
+    // Using unwrap() (assumes there are textures available):
     image_obj.set_preload(texture_manager.get_preload_by_index(current_index).unwrap());
+    
+    // Or more safely with error handling:
+    if texture_manager.texture_count() > 0 {
+        if let Some(preloaded) = texture_manager.get_preload_by_index(current_index) {
+            image_obj.set_preload(preloaded);
+        }
+    }
 
 Note: For clearing images, use the clear() method directly on the ImageObject:
     image_obj.clear();
